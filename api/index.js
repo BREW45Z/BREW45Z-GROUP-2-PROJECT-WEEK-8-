@@ -3,6 +3,7 @@ const cors = require('cors')
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
+const cookieParser = require('cookie-parser');
 const User = require('./models/User');
 
 require('dotenv').config();
@@ -13,7 +14,7 @@ PORT = process.env.PORT;
 
 
 app.use(express.json());
-app.use(express.urlencoded({extended:true}));
+app.use(cookieParser());  
 
 app.use(cors({
     credentials: true,
@@ -51,14 +52,31 @@ app.post('/login', async (req,res)=>{
     }
     //if user exists, check if password is correct
     if(bcrypt.compareSync(password, user.password)){
-        jwt.sign({email:user.email, id:user._id}, process.env.SECRET_KEY, {expiresIn:'10d'}, (err, token)=>{
+        jwt.sign({email:user.email, id:user._id}, process.env.SECRET_KEY, {}, (err, token)=>{
             if(err){
                 res.status(500).json({success:false, message:'Error signing token'})
             }
             res.cookie('token', token).json(user)
         })
-}})
+}   else {
+        res.status(422).json({success:false, message:'Invalid credentials'})
+    }
 
+})
+
+app.get('/api/profile', (req,res) => {
+    mongoose.connect(process.env.MONGO_URI);
+    const {token} = req.cookies;
+    if (token) {
+      jwt.verify(token, process.env.SECRET_KEY, {}, async (err, userData) => {
+        if (err) throw err;
+        const {name,email,_id} = await User.findById(userData.id);
+        res.json({name,email,_id});
+      });
+    } else {
+      res.json(null);
+    }
+  });
 
 app.listen(PORT,()=>{
     console.log(`Server listening on port ${PORT} ....`);
