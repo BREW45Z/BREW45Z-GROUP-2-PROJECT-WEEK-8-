@@ -78,6 +78,11 @@ app.get('/api/profile', (req,res) => {
     }
   });
 
+
+  app.post('/logout', (req,res)=>{
+    res.cookie('token', '').json(true);
+  })
+
 app.listen(PORT,()=>{
     console.log(`Server listening on port ${PORT} ....`);
 
